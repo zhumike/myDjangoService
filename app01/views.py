@@ -9,11 +9,11 @@
 -------------------------------------------------
 """
 import json
-
+from loguru import logger as loguru_logger  # 引入loguru的logger对象
 from django.core import serializers
-
 from .utils.rsp_data import Rsp_Data
 from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse  # 如果使用 JsonResponse，则直接使用它。
 from django.shortcuts import render, HttpResponse, redirect
 from app01 import models
 from django.db.models import Avg,Max,Min,Count,Sum  #   引入函数
@@ -52,6 +52,15 @@ def query_book(request):
     return Rsp_Data.result(message="success",data=data_dict_list)
 
 
+def query_book_by_name(request, *args, **kwargs):
+    title = request.GET.get('title', None)  # 获取查询参数title
+    print(title)
+    books = models.Book.objects.all()  # 获取所有书籍
+    if title:  # 如果提供了书名参数，则过滤书籍
+        books = books.filter(title=title)
+    data_dict_list = [model_to_dict(item) for item in books]
+    return Rsp_Data.result(message="success",data=data_dict_list)
+
 def query_publish(request):
     #  获取出版社对象
     pub_obj = models.Publish.objects.filter(pk=1).first()
@@ -59,6 +68,19 @@ def query_publish(request):
     book = models.Book2.objects.create(title="菜鸟教程", price=200, pub_date="2010-10-10", publish=pub_obj)
     print(book, type(book))
     return HttpResponse(book)
+
+def query_publish_by_city(request):
+    city = request.GET.get('city', None)  # 获取查询参数city
+    publishes = models.Publish.objects.all()  # 获取所有出版社信息
+    if city:
+        publishes=publishes.filter(city=city)
+        serialized_data = serializers.serialize('json', publishes)
+        loguru_logger.info("这是序列化数据信息：{}",serialized_data)
+        return Rsp_Data.result(message="success", data=serialized_data)
+    # data_dict_list = [model_to_dict(item) for item in publishes]
+    # return HttpResponse(serialized_data, content_type='application/json')  # 使用 HttpResponse 返回。注意手动设置 content_type。
+    else:
+        return Rsp_Data.server_error(code=500,message="数据异常请检查")
 
 
 
